@@ -105,8 +105,8 @@ export default function App() {
   };
 
   return (
-    <motion.div className="app" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-      <Header settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((o) => !o)} />
+    <motion.div className="app" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 26 }}>
+      <Header settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((o) => !o)} running={running} />
       <SettingsPanel
         open={settingsOpen}
         provider={provider}

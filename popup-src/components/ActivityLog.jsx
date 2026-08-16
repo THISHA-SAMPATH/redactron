@@ -18,10 +18,10 @@ function RedactCounter({ count }) {
         <motion.span
           key={count}
           className="redact-count-num"
-          initial={{ y: -10, opacity: 0 }}
+          initial={{ y: -8, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 10, opacity: 0 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
+          exit={{ y: 8, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
         >
           {count}
         </motion.span>
@@ -35,7 +35,7 @@ export default function ActivityLog({ entries, redactedCount }) {
   return (
     <section className="log-section">
       <div className="log-header">
-        <span>Activity</span>
+        <span className="log-header-label">activity</span>
         <RedactCounter count={redactedCount} />
       </div>
 
@@ -49,7 +49,7 @@ export default function ActivityLog({ entries, redactedCount }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              No activity yet.
+              no activity yet.
             </motion.div>
           )}
           {entries.map((entry) => {
@@ -59,20 +59,22 @@ export default function ActivityLog({ entries, redactedCount }) {
                 key={entry.id}
                 className={`log-entry log-entry-${entry.type}`}
                 layout
-                initial={{ opacity: 0, x: -8, height: 0 }}
+                initial={{ opacity: 0, x: -10, height: 0 }}
                 animate={{ opacity: 1, x: 0, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
               >
-                {entry.type === "redaction" && (
+                {entry.type === "redaction" ? (
                   <motion.span
                     className="redact-strip"
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
                   />
+                ) : (
+                  <span className="log-prefix">&gt;</span>
                 )}
-                <Icon size={13} className="log-icon" />
+                <Icon size={12.5} className="log-icon" />
                 <span className="log-text">{entry.text}</span>
               </motion.div>
             );
