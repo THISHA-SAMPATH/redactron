@@ -1,6 +1,8 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Info, MousePointerClick, EyeOff, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import MarkerStrip from "./MarkerStrip.jsx";
+import { seededRange } from "../lib/seed.js";
 
 const ICONS = {
   info: Info,
@@ -54,23 +56,20 @@ export default function ActivityLog({ entries, redactedCount }) {
           )}
           {entries.map((entry) => {
             const Icon = ICONS[entry.type] || Info;
+            const tilt = seededRange(entry.id, -0.9, 0.9);
             return (
               <motion.div
                 key={entry.id}
-                className={`log-entry log-entry-${entry.type}`}
+                className={`log-entry torn-card log-entry-${entry.type}`}
                 layout
-                initial={{ opacity: 0, x: -10, height: 0 }}
-                animate={{ opacity: 1, x: 0, height: "auto" }}
+                style={{ "--tilt": `${tilt}deg` }}
+                initial={{ opacity: 0, x: -10, y: -4, rotate: tilt * 3, height: 0 }}
+                animate={{ opacity: 1, x: 0, y: 0, rotate: tilt, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
               >
                 {entry.type === "redaction" ? (
-                  <motion.span
-                    className="redact-strip"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  />
+                  <MarkerStrip seed={entry.id} />
                 ) : (
                   <span className="log-prefix">&gt;</span>
                 )}
