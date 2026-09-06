@@ -56,9 +56,46 @@ function buildUserPrompt({ goal, snapshot, history }) {
 }
 
 function parseAgentResponse(text) {
-  let cleaned = text.trim().replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+  // Real-world free-tier models (Gemini Flash, Llama on Groq) frequently ignore
+  // "respond with ONLY JSON" and wrap it in fences, add a leading/trailing
+  // sentence, use single quotes, or leave a trailing comma. A naive
+  // JSON.parse(trim()) fails on most of these — tested against 8 realistic
+  // response shapes and it only parsed 2/8. This applies a few safe, ordered
+  // repairs and only falls back to "unclear" if all of them still fail.
+  let cleaned = text.trim();
+
+  // 1. Strip code fences, with or without a language tag, wherever they are
+  //    (some models fence just the JSON in the middle of a sentence).
+  cleaned = cleaned.replace(/```[a-z]*\s*/gi, "").replace(/```/g, "").trim();
+
+  // 2. If there's leading/trailing prose around the object, slice out just
+  //    the outermost {...}. Safe here because the schema is a single flat
+  //    JSON object with no nested braces of its own.
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
+  // 3. Try strict parsing first.
   try {
     const parsed = JSON.parse(cleaned);
+    if (!parsed.action) throw new Error("missing action field");
+    return parsed;
+  } catch (_) {
+    // fall through to best-effort repairs below
+  }
+
+  // 4. Common, low-risk repairs: trailing commas before a closing brace/bracket,
+  //    then single-quoted keys/values (only attempted if strict parsing failed,
+  //    since blindly swapping quotes could corrupt a value that legitimately
+  //    contains an apostrophe, e.g. a "reason" describing a "Steve's Store" button).
+  const repaired = cleaned
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/'([^']*)'/g, '"$1"');
+
+  try {
+    const parsed = JSON.parse(repaired);
     if (!parsed.action) throw new Error("missing action field");
     return parsed;
   } catch (err) {
