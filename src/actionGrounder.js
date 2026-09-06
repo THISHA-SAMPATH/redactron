@@ -70,7 +70,23 @@
       return Promise.resolve({ ok: false, reason: "no_matching_element" });
     }
 
+    // The rid was resolved from a snapshot taken before the LLM round-trip
+    // (often 1-5+ seconds). On any React/Vue/Angular-style site, it's normal
+    // for the framework to have already replaced that node with a new one by
+    // now — same pixels on screen, different underlying DOM node. Detect that
+    // instead of silently "confirming" a click on a detached element that the
+    // user can no longer even see highlighted.
+    if (!node.isConnected) {
+      pendingAction = null;
+      return Promise.resolve({ ok: false, reason: "stale_element" });
+    }
+
     const rect = node.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      pendingAction = null;
+      return Promise.resolve({ ok: false, reason: "element_not_visible" });
+    }
+
     const box = document.createElement("div");
     box.className = "redactron-highlight-box";
     box.style.top = `${rect.top + window.scrollY}px`;
