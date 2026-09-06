@@ -124,7 +124,22 @@ async function startAgent(goal) {
     log({ type: "step", text: action.reason || `Proposing: ${action.action}`, action });
 
     // 3. Ground the action on the real page — user must confirm before it executes
-    const groundResult = await chrome.tabs.sendMessage(tabId, { type: "PROPOSE_ACTION", action });
+    let groundResult = await chrome.tabs.sendMessage(tabId, { type: "PROPOSE_ACTION", action });
+
+    // A stale/not-visible/no-match result usually just means the page re-rendered
+    // between the snapshot we sent the model and now (normal on React/Vue/Angular
+    // sites). Refresh the content script's element registry once and retry the
+    // SAME action — resolveElement() will fail on the old rid, so this falls
+    // through to fuzzyResolve(action.target_description, ...) against the fresh
+    // snapshot, which is exactly the fallback the model was told to provide.
+    const RETRYABLE = new Set(["stale_element", "element_not_visible", "no_matching_element"]);
+    if (!groundResult?.ok && RETRYABLE.has(groundResult?.reason)) {
+      log({ type: "info", text: "Page changed since the last look — refreshing and retrying this step." });
+      const refreshed = await chrome.tabs.sendMessage(tabId, { type: "GET_SNAPSHOT" });
+      if (refreshed?.snapshot) {
+        groundResult = await chrome.tabs.sendMessage(tabId, { type: "PROPOSE_ACTION", action });
+      }
+    }
 
     if (!groundResult?.ok) {
       log({ type: "warn", text: "Could not locate that element on the page. Stopping." });
